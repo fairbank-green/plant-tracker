@@ -444,7 +444,7 @@ test('checkForDayReset - resets when day changes', async () => {
   // Manually set current date to yesterday
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  store.currentDate = yesterday;
+  store._setCurrentDate(yesterday);
   
   // Check for reset (should detect new day)
   await store.checkForDayReset();
@@ -471,17 +471,24 @@ test('checkForDayReset - updates current date', async () => {
   const store = useDailyStore();
   await store.initialize();
   
+  // Get the initial date (today)
+  const initialDateString = store.currentDateString;
+  
   // Set to yesterday
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  store.currentDate = yesterday;
+  store._setCurrentDate(yesterday);
   
-  const oldDateString = store.currentDateString;
+  // Verify it was set to yesterday
+  assert.notStrictEqual(store.currentDateString, initialDateString);
+  const yesterdayString = store.currentDateString;
   
   await store.checkForDayReset();
   
-  // Date should be updated
-  assert.notStrictEqual(store.currentDateString, oldDateString);
+  // Date should be updated back to today (different from yesterday)
+  assert.notStrictEqual(store.currentDateString, yesterdayString);
+  // Should be back to today
+  assert.strictEqual(store.currentDateString, initialDateString);
 });
 
 // ============================================================================
@@ -493,7 +500,8 @@ test('currentDateString - formats date correctly', async () => {
   await store.initialize();
   
   // Set to a specific date
-  store.currentDate = new Date(2025, 0, 6); // Jan 6, 2025
+  const testDate = new Date(2025, 0, 6); // Jan 6, 2025
+  store._setCurrentDate(testDate);
   
   assert.strictEqual(store.currentDateString, '2025-01-06');
 });
@@ -502,7 +510,8 @@ test('currentDateString - handles single-digit months and days', async () => {
   const store = useDailyStore();
   await store.initialize();
   
-  store.currentDate = new Date(2025, 0, 5); // Jan 5, 2025
+  const testDate = new Date(2025, 0, 5); // Jan 5, 2025
+  store._setCurrentDate(testDate);
   
   assert.strictEqual(store.currentDateString, '2025-01-05');
 });
@@ -579,10 +588,10 @@ test('integration - reset at midnight clears previous day', async () => {
   await store.addColor(FOOD_COLORS.YELLOW);
   await store.markFermentedFood();
   
-  // Simulate midnight reset
+  // Simulate midnight reset by setting date to yesterday
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  store.currentDate = yesterday;
+  store._setCurrentDate(yesterday);
   
   await store.checkForDayReset();
   

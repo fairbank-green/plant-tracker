@@ -222,7 +222,7 @@ export const useWeeklyStore = defineStore('weekly', () => {
       weekStart: weekStart.value.toISOString(),
       weekEnd: weekEnd.value.toISOString(),
       foodInstances: foodInstances.value.map(convertInstanceToRecord),
-      uniqueFoods: uniqueFoodIds.value,
+      uniqueFoods: [...uniqueFoodIds.value], // Convert to plain array
       totalPoints: totalPoints.value,
       categoryBreakdown: {
         whole_grains: categoryBreakdown.value.whole_grains,
@@ -232,7 +232,7 @@ export const useWeeklyStore = defineStore('weekly', () => {
         legumes: categoryBreakdown.value.legumes,
         herbs_spices: categoryBreakdown.value.herbs_spices,
       },
-      colorsAchieved: colorsAchieved.value,
+      colorsAchieved: [...colorsAchieved.value], // Convert to plain array
       currentStreak: currentStreak.value,
     };
 

@@ -21,7 +21,7 @@ export const useDailyStore = defineStore('daily', () => {
   // ============================================================================
 
   const userId = ref<string>('default-user'); // Would be set from auth
-  const currentDate = ref<Date>(new Date());
+  const currentDateString = ref<string>(formatDateString(new Date()));
   const waterGlasses = ref<number>(0);
   const colorsEaten = ref<FoodColor[]>([]);
   const fermentedFoodEaten = ref<boolean>(false);
@@ -52,13 +52,6 @@ export const useDailyStore = defineStore('daily', () => {
     return colorsEaten.value.length === 6;
   });
 
-  /**
-   * Get current date as YYYY-MM-DD string
-   */
-  const currentDateString = computed(() => {
-    return formatDateString(currentDate.value);
-  });
-
   // ============================================================================
   // Actions
   // ============================================================================
@@ -71,7 +64,7 @@ export const useDailyStore = defineStore('daily', () => {
       return;
     }
 
-    currentDate.value = new Date();
+    currentDateString.value = formatDateString(new Date());
     await loadTodayData();
     isInitialized.value = true;
   }
@@ -82,8 +75,9 @@ export const useDailyStore = defineStore('daily', () => {
    */
   async function checkForDayReset(): Promise<void> {
     const now = new Date();
+    const currentDate = parseDateString(currentDateString.value);
     
-    if (shouldResetDaily(now, currentDate.value)) {
+    if (shouldResetDaily(now, currentDate)) {
       await resetForNewDay(now);
     }
   }
@@ -150,9 +144,11 @@ export const useDailyStore = defineStore('daily', () => {
       loggedDate: Date;
     }>
   ): Promise<void> {
+    const currentDate = parseDateString(currentDateString.value);
+    
     // Filter to today's instances
     const todayInstances = foodInstances.filter(instance =>
-      isSameDay(instance.loggedDate, currentDate.value)
+      isSameDay(instance.loggedDate, currentDate)
     );
 
     // Calculate colors from today's instances
@@ -161,7 +157,7 @@ export const useDailyStore = defineStore('daily', () => {
         color: i.color,
         loggedDate: i.loggedDate,
       })),
-      currentDate.value
+      currentDate
     );
 
     // Update colors
@@ -184,6 +180,21 @@ export const useDailyStore = defineStore('daily', () => {
     await persistToDb();
   }
 
+  /**
+   * Set current date (for testing purposes)
+   * @internal
+   */
+  function _setCurrentDate(date: Date): void {
+    currentDateString.value = formatDateString(date);
+  }
+
+  /**
+   * Get current date as Date object (helper for components)
+   */
+  function getCurrentDate(): Date {
+    return parseDateString(currentDateString.value);
+  }
+
   // ============================================================================
   // Helper Functions
   // ============================================================================
@@ -192,7 +203,7 @@ export const useDailyStore = defineStore('daily', () => {
    * Load today's data from IndexedDB
    */
   async function loadTodayData(): Promise<void> {
-    const dateString = formatDateString(currentDate.value);
+    const dateString = currentDateString.value;
     const data = await loadDailyData(userId.value, dateString);
 
     if (data) {
@@ -211,7 +222,7 @@ export const useDailyStore = defineStore('daily', () => {
    * Reset data for a new day
    */
   async function resetForNewDay(newDate: Date): Promise<void> {
-    currentDate.value = newDate;
+    currentDateString.value = formatDateString(newDate);
     waterGlasses.value = 0;
     colorsEaten.value = [];
     fermentedFoodEaten.value = false;
@@ -222,14 +233,14 @@ export const useDailyStore = defineStore('daily', () => {
    * Persist current state to IndexedDB
    */
   async function persistToDb(): Promise<void> {
-    const dateString = formatDateString(currentDate.value);
+    const dateString = currentDateString.value;
     
     const record: DailyDataRecord = {
       id: `${userId.value}-${dateString}`,
       userId: userId.value,
       date: dateString,
       waterGlasses: waterGlasses.value,
-      colorsEaten: colorsEaten.value,
+      colorsEaten: [...colorsEaten.value], // Convert to plain array
       fermentedFoodEaten: fermentedFoodEaten.value,
     };
 
@@ -246,6 +257,14 @@ export const useDailyStore = defineStore('daily', () => {
     return `${year}-${month}-${day}`;
   }
 
+  /**
+   * Parse YYYY-MM-DD string to Date object
+   */
+  function parseDateString(dateString: string): Date {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
   // ============================================================================
   // Return
   // ============================================================================
@@ -253,7 +272,7 @@ export const useDailyStore = defineStore('daily', () => {
   return {
     // State
     userId,
-    currentDate,
+    currentDateString,
     waterGlasses,
     colorsEaten,
     fermentedFoodEaten,
@@ -263,7 +282,6 @@ export const useDailyStore = defineStore('daily', () => {
     waterGoalAchieved,
     colorsCount,
     allColorsAchieved,
-    currentDateString,
 
     // Constants (for UI)
     WATER_MIN,
@@ -280,5 +298,7 @@ export const useDailyStore = defineStore('daily', () => {
     markFermentedFood,
     updateFromFoodInstances,
     resetDaily,
+    getCurrentDate,
+    _setCurrentDate, // For testing only
   };
 });
